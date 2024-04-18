@@ -91,6 +91,13 @@ func (ins Instructions) fmtInstruction(def *Definition, operands []int) string {
 	if len(operands) != operandCount {
 		return fmt.Sprintf("ERROR: operand len %d does not match defined %d\n", len(operands), operandCount)
 	}
+
+	switch operandCount {
+	case 1:
+		return fmt.Sprintf("%s%d", def.Name, operands[0])
+	}
+
+	return fmt.Sprintf("ERROR:unhandled operandCount for %s\n", def.Name)
 }
 
 func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
