@@ -64,6 +64,12 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OpFalse:
+			err := vm.push(False)
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
