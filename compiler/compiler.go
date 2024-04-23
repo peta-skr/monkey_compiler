@@ -51,11 +51,9 @@ func (c *Compiler) Compile(node ast.Node) error {
 				return err
 			}
 
-			c.emit(\)
+			c.emit(code.OpGreaterThan)
+			return nil
 		}
-
-
-		
 
 		err := c.Compile(node.Left)
 		if err != nil {
