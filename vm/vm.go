@@ -243,13 +243,30 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpClosure:
-			constIndex := code.ReadUnit8(ins[ip+1:])
-			_ = code.ReadUnit8(ins[ip+3:])
+			constIndex := code.ReadUnit16(ins[ip+1:])
+			numFree := code.ReadUnit8(ins[ip+3:])
 			vm.currentFrame().ip += 3
 
-			err := vm.pushClosure(int(constIndex))
+			err := vm.pushClosure(int(constIndex), int(numFree))
 			if err != nil {
 				return err
+			}
+		case code.OpGetFree:
+			freeIndex := code.ReadUnit8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			currentClosure := vm.currentFrame().cl
+			err := vm.push(currentClosure.Free[freeIndex])
+
+			if err != nil {
+				return err
+			}
+		case code.OpCurrentClosure:
+			currentClosure := vm.currentFrame().cl
+			err := vm.push(currentClosure)
+
+			if err != nil {
+				return nil
 			}
 		}
 
@@ -501,20 +518,6 @@ func (vm *VM) popFrame() *Frame {
 	return vm.frames[vm.framesIndex]
 }
 
-func (vm *VM) callFunction(fn *object.CompiledFunction, numArgs int) error {
-
-	if numArgs != fn.NumParameters {
-		return fmt.Errorf("wrong number of arguments: want=%d, got=%d", fn.NumParameters, numArgs)
-	}
-
-	frame := NewFrame(fn, vm.sp-numArgs)
-	vm.pushFrame(frame)
-
-	vm.sp = frame.basePointer + fn.NumLocals
-
-	return nil
-}
-
 func (vm *VM) executeCall(numArgs int) error {
 	callee := vm.stack[vm.sp-1-numArgs]
 
@@ -555,13 +558,21 @@ func (vm *VM) callClosure(cl *object.Closure, numArgs int) error {
 	return nil
 }
 
-func (vm *VM) pushClosure(constIndex int) error {
+func (vm *VM) pushClosure(constIndex, numFree int) error {
 	constant := vm.constants[constIndex]
 	function, ok := constant.(*object.CompiledFunction)
 	if !ok {
 		return fmt.Errorf("not a function: %+v", constant)
 	}
 
-	closure := &object.Closure{Fn: function}
+	free := make([]object.Object, numFree)
+
+	for i := 0; i < numFree; i++ {
+		free[i] = vm.stack[vm.sp-numFree+i]
+	}
+
+	vm.sp = vm.sp - numFree
+
+	closure := &object.Closure{Fn: function, Free: free}
 	return vm.push(closure)
 }
